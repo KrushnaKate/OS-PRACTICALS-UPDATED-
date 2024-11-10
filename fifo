@@ -1,3 +1,11 @@
+//to run this use following command
+//gcc filename.c -o filename
+//then type following commands
+//mkfifo 1
+//mkfifo 2
+//then
+//./filename
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
