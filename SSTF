@@ -21,7 +21,7 @@ int findClosestRequest(int arr[], int n, int head) {
 }
 
 void SSTF(int requests[], int n, int head) {
-    int total_seek_count = 0;
+    int total_head_moves = 0;
     int seek_sequence[n];
     int count = 0;
 
@@ -30,8 +30,8 @@ void SSTF(int requests[], int n, int head) {
         // Find the closest request to the head
         int index = findClosestRequest(requests, n, head);
 
-        // Add the seek distance to total
-        total_seek_count += abs(requests[index] - head);
+        // Add the head move to the total
+        total_head_moves += abs(requests[index] - head);
         seek_sequence[count] = requests[index];
 
         // Update the head position
@@ -43,15 +43,14 @@ void SSTF(int requests[], int n, int head) {
         count++;
     }
 
-    // Output the seek sequence and total seek count
+    // Output the seek sequence and total head moves
     printf("Seek Sequence: ");
     for (int i = 0; i < n; i++) {
         printf("%d ", seek_sequence[i]);
     }
     printf("\n");
 
-    printf("Total Seek Count: %d\n", total_seek_count);
-    printf("Average Seek Time: %.2f\n", (float)total_seek_count / n);
+    printf("Total Head Moves: %d\n", total_head_moves);
 }
 
 int main() {
