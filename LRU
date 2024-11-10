@@ -1,0 +1,87 @@
+#include <stdio.h>
+
+#define MAX_FRAMES 10 // Maximum number of frames
+
+// Function to find the index of the page in the frame
+int findPage(int frames[], int frame_size, int page) {
+    for (int i = 0; i < frame_size; i++) {
+        if (frames[i] == page) {
+            return i; // Page found in frame
+        }
+    }
+    return -1; // Page not found
+}
+
+// Function to implement LRU page replacement algorithm
+void LRU(int pages[], int n, int frame_size) {
+    int frames[frame_size]; // Frames to hold pages
+    int time[frame_size];   // To keep track of time for LRU
+
+    // Initialize frames and time arrays
+    for (int i = 0; i < frame_size; i++) {
+        frames[i] = -1; // Empty frame
+        time[i] = -1;   // Initialize time to -1
+    }
+
+    int page_faults = 0; // To count page faults
+    int current_time = 0; // To simulate time for LRU
+
+    printf("Page reference string: ");
+    for (int i = 0; i < n; i++) {
+        printf("%d ", pages[i]);
+    }
+    printf("\n");
+
+    // Process each page in the reference string
+    for (int i = 0; i < n; i++) {
+        int page = pages[i];
+        int index = findPage(frames, frame_size, page); // Check if page is in frame
+
+        if (index == -1) { // Page fault occurs
+            // Find the least recently used (LRU) page
+            int lru_index = 0;
+            for (int j = 1; j < frame_size; j++) {
+                if (time[j] < time[lru_index]) {
+                    lru_index = j;
+                }
+            }
+
+            // Replace the LRU page with the new page
+            frames[lru_index] = page;
+            time[lru_index] = current_time;
+            page_faults++; // Increment page fault count
+        } else {
+            // Update time for the page already in frame
+            time[index] = current_time;
+        }
+
+        // Print the current frame state
+        printf("Frames after processing page %d: ", page);
+        for (int j = 0; j < frame_size; j++) {
+            if (frames[j] != -1) {
+                printf("%d ", frames[j]);
+            }
+        }
+        printf("\n");
+
+        current_time++; // Increment time
+    }
+
+    printf("Total page faults: %d\n", page_faults);
+}
+
+int main() {
+    int pages[] = {7, 0, 1, 2, 0, 3, 0, 4, 2, 3}; // Example page reference string
+    int n = sizeof(pages) / sizeof(pages[0]); // Length of page reference string
+
+    int frame_size = 3; // Frame size
+
+    if (frame_size < 3) {
+        printf("Frame size must be at least 3\n");
+        return 1;
+    }
+
+    LRU(pages, n, frame_size); // Call the LRU function
+
+    return 0;
+}
