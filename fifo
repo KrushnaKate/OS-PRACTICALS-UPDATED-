@@ -1,138 +1,91 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <ctype.h>
+#include <sys/wait.h>
 
-// Function to count characters, words, and lines
-void count_info(const char *sentence, int *char_count, int *word_count, int *line_count) {
-    int in_word = 0;
-    *char_count = strlen(sentence);
-    *word_count = 0;
-    *line_count = 1;
-
-    for (int i = 0; i < *char_count; i++) {
-        if (sentence[i] == '\n') {
-            (*line_count)++;
-        }
-        if (sentence[i] == ' ' || sentence[i] == '\n' || sentence[i] == '\t') {
-            in_word = 0;
-        } else if (!in_word) {
-            in_word = 1;
-            (*word_count)++;
-        }
-    }
-}
+#define FIFO1 "fifo1"
+#define FIFO2 "fifo2"
 
 int main() {
-    int fd1[2], fd2[2];  // Pipes for full-duplex communication
-    pid_t pid;
-    char sentence[1024], result[1024];
-    int char_count, word_count, line_count;
-
-    // Create two named pipes (FIFOs)
-    if (mkfifo("fifo1", 0666) == -1 || mkfifo("fifo2", 0666) == -1) {
+    char input[100];
+    char output[100];
+    
+    // Create the named pipes (FIFOs)
+    if (mkfifo(FIFO1, 0666) == -1 || mkfifo(FIFO2, 0666) == -1) {
         perror("mkfifo failed");
         exit(1);
     }
-
-    pid = fork();
-
+    
+    pid_t pid = fork();
+    
     if (pid < 0) {
-        perror("Fork failed");
+        perror("fork failed");
         exit(1);
     }
 
-    if (pid == 0) { // Child process (second process)
-        int input_fd, output_fd;
-        char output_file[] = "output.txt";
-
-        // Open the input pipe to read from the first process
-        input_fd = open("fifo1", O_RDONLY);
-        if (input_fd == -1) {
-            perror("Failed to open fifo1 for reading");
+    if (pid == 0) {  // Child process
+        // Open FIFO1 for reading and FIFO2 for writing
+        int read_fd = open(FIFO1, O_RDONLY);
+        int write_fd = open(FIFO2, O_WRONLY);
+        
+        if (read_fd == -1 || write_fd == -1) {
+            perror("Child: open failed");
             exit(1);
         }
+        
+        // Read the message from FIFO1
+        read(read_fd, input, sizeof(input));
+        printf("Child received: %s\n", input);
 
-        // Read the sentence from the first pipe
-        read(input_fd, sentence, sizeof(sentence));
-        close(input_fd);
+        // Perform some operation (for example, converting to uppercase)
+        for (int i = 0; input[i]; i++) {
+            output[i] = toupper(input[i]);
+        }
+        output[strlen(input)] = '\0';
 
-        // Count characters, words, and lines
-        count_info(sentence, &char_count, &word_count, &line_count);
-
-        // Write results to output file
-        output_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-        if (output_fd == -1) {
-            perror("Failed to open output.txt");
+        // Write the processed message to FIFO2
+        write(write_fd, output, strlen(output) + 1);
+        
+        // Close file descriptors
+        close(read_fd);
+        close(write_fd);
+        
+        exit(0);  // Child process ends here
+    } else {  // Parent process
+        // Open FIFO1 for writing and FIFO2 for reading
+        int write_fd = open(FIFO1, O_WRONLY);
+        int read_fd = open(FIFO2, O_RDONLY);
+        
+        if (write_fd == -1 || read_fd == -1) {
+            perror("Parent: open failed");
             exit(1);
         }
+        
+        // Prompt and write a message to FIFO1
+        printf("Enter a message: ");
+        fgets(input, sizeof(input), stdin);
+        input[strlen(input) - 1] = '\0';  // Remove newline character
+        write(write_fd, input, strlen(input) + 1);
 
-        dprintf(output_fd, "Character count: %d\n", char_count);
-        dprintf(output_fd, "Word count: %d\n", word_count);
-        dprintf(output_fd, "Line count: %d\n", line_count);
-        close(output_fd);
-
-        // Open the output file to read its content
-        output_fd = open(output_file, O_RDONLY);
-        if (output_fd == -1) {
-            perror("Failed to open output.txt for reading");
-            exit(1);
-        }
-
-        // Read the content of the file and write it to the second pipe
-        int fd2 = open("fifo2", O_WRONLY);
-        if (fd2 == -1) {
-            perror("Failed to open fifo2 for writing");
-            exit(1);
-        }
-
-        while (read(output_fd, result, sizeof(result)) > 0) {
-            write(fd2, result, strlen(result));
-        }
-
-        close(output_fd);
-        close(fd2);
-        exit(0); // Exit child process
-    } else { // Parent process (first process)
-        int input_fd, output_fd;
-
-        // Open the output pipe to read from the second process
-        output_fd = open("fifo2", O_RDONLY);
-        if (output_fd == -1) {
-            perror("Failed to open fifo2 for reading");
-            exit(1);
-        }
-
-        // Accept the sentence from the user
-        printf("Enter a sentence: ");
-        fgets(sentence, sizeof(sentence), stdin);
-
-        // Open the first pipe to write the sentence
-        input_fd = open("fifo1", O_WRONLY);
-        if (input_fd == -1) {
-            perror("Failed to open fifo1 for writing");
-            exit(1);
-        }
-
-        // Write the sentence to the first pipe
-        write(input_fd, sentence, strlen(sentence));
-        close(input_fd);
-
-        // Read the result from the second pipe
-        printf("\nResults from the second process:\n");
-        while (read(output_fd, result, sizeof(result)) > 0) {
-            printf("%s", result);
-        }
-
-        close(output_fd);
+        // Read the processed message from FIFO2
+        read(read_fd, output, sizeof(output));
+        printf("Parent received: %s\n", output);
+        
+        // Close file descriptors
+        close(write_fd);
+        close(read_fd);
+        
+        // Remove the FIFOs
+        unlink(FIFO1);
+        unlink(FIFO2);
+        
+        // Wait for child process to finish
+        wait(NULL);
     }
-
-    // Clean up: Remove FIFO files
-    unlink("fifo1");
-    unlink("fifo2");
-
+    
     return 0;
 }
