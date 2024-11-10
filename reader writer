@@ -1,0 +1,100 @@
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <semaphore.h>
+
+// Shared resource
+int sharedResource = 0;
+
+// Mutex and semaphores
+pthread_mutex_t resourceMutex = PTHREAD_MUTEX_INITIALIZER;   // Mutex to protect shared resource
+pthread_mutex_t readCountMutex = PTHREAD_MUTEX_INITIALIZER;  // Mutex to protect read count
+sem_t writeLock;   // Semaphore for writer to ensure mutual exclusion
+
+int readCount = 0;  // Number of active readers
+
+// Reader function
+void* reader(void* arg) {
+    int readerId = *(int*)arg;
+    
+    while (1) {
+        // Start reading
+        pthread_mutex_lock(&readCountMutex);
+        readCount++;
+        if (readCount == 1) {
+            // If this is the first reader, lock the resource for exclusive reading
+            sem_wait(&writeLock);
+        }
+        pthread_mutex_unlock(&readCountMutex);
+
+        // Reading the shared resource
+        pthread_mutex_lock(&resourceMutex);
+        printf("Reader %d: Read resource value: %d\n", readerId, sharedResource);
+        pthread_mutex_unlock(&resourceMutex);
+
+        // Done reading
+        pthread_mutex_lock(&readCountMutex);
+        readCount--;
+        if (readCount == 0) {
+            // If this was the last reader, release the write lock
+            sem_post(&writeLock);
+        }
+        pthread_mutex_unlock(&readCountMutex);
+
+        sleep(1);  // Simulate reading time
+    }
+    return NULL;
+}
+
+// Writer function
+void* writer(void* arg) {
+    int writerId = *(int*)arg;
+    
+    while (1) {
+        // Start writing
+        sem_wait(&writeLock);  // Ensure exclusive access to the resource
+
+        pthread_mutex_lock(&resourceMutex);
+        sharedResource++;  // Modify the shared resource
+        printf("Writer %d: Wrote new resource value: %d\n", writerId, sharedResource);
+        pthread_mutex_unlock(&resourceMutex);
+
+        sem_post(&writeLock);  // Release the lock after writing
+
+        sleep(2);  // Simulate writing time
+    }
+    return NULL;
+}
+
+int main() {
+    pthread_t readers[5], writers[2];
+    int readerIds[5] = {1, 2, 3, 4, 5};
+    int writerIds[2] = {1, 2};
+
+    // Initialize the semaphore for writeLock
+    sem_init(&writeLock, 0, 1);  // Initially allow one writer to access the resource
+
+    // Create reader and writer threads
+    for (int i = 0; i < 5; i++) {
+        pthread_create(&readers[i], NULL, reader, &readerIds[i]);
+    }
+    for (int i = 0; i < 2; i++) {
+        pthread_create(&writers[i], NULL, writer, &writerIds[i]);
+    }
+
+    // Join the threads
+    for (int i = 0; i < 5; i++) {
+        pthread_join(readers[i], NULL);
+    }
+    for (int i = 0; i < 2; i++) {
+        pthread_join(writers[i], NULL);
+    }
+
+    // Clean up semaphores and mutexes
+    sem_destroy(&writeLock);
+    pthread_mutex_destroy(&resourceMutex);
+    pthread_mutex_destroy(&readCountMutex);
+
+    return 0;
+}
