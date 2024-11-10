@@ -1,0 +1,138 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+// Function to count characters, words, and lines
+void count_info(const char *sentence, int *char_count, int *word_count, int *line_count) {
+    int in_word = 0;
+    *char_count = strlen(sentence);
+    *word_count = 0;
+    *line_count = 1;
+
+    for (int i = 0; i < *char_count; i++) {
+        if (sentence[i] == '\n') {
+            (*line_count)++;
+        }
+        if (sentence[i] == ' ' || sentence[i] == '\n' || sentence[i] == '\t') {
+            in_word = 0;
+        } else if (!in_word) {
+            in_word = 1;
+            (*word_count)++;
+        }
+    }
+}
+
+int main() {
+    int fd1[2], fd2[2];  // Pipes for full-duplex communication
+    pid_t pid;
+    char sentence[1024], result[1024];
+    int char_count, word_count, line_count;
+
+    // Create two named pipes (FIFOs)
+    if (mkfifo("fifo1", 0666) == -1 || mkfifo("fifo2", 0666) == -1) {
+        perror("mkfifo failed");
+        exit(1);
+    }
+
+    pid = fork();
+
+    if (pid < 0) {
+        perror("Fork failed");
+        exit(1);
+    }
+
+    if (pid == 0) { // Child process (second process)
+        int input_fd, output_fd;
+        char output_file[] = "output.txt";
+
+        // Open the input pipe to read from the first process
+        input_fd = open("fifo1", O_RDONLY);
+        if (input_fd == -1) {
+            perror("Failed to open fifo1 for reading");
+            exit(1);
+        }
+
+        // Read the sentence from the first pipe
+        read(input_fd, sentence, sizeof(sentence));
+        close(input_fd);
+
+        // Count characters, words, and lines
+        count_info(sentence, &char_count, &word_count, &line_count);
+
+        // Write results to output file
+        output_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (output_fd == -1) {
+            perror("Failed to open output.txt");
+            exit(1);
+        }
+
+        dprintf(output_fd, "Character count: %d\n", char_count);
+        dprintf(output_fd, "Word count: %d\n", word_count);
+        dprintf(output_fd, "Line count: %d\n", line_count);
+        close(output_fd);
+
+        // Open the output file to read its content
+        output_fd = open(output_file, O_RDONLY);
+        if (output_fd == -1) {
+            perror("Failed to open output.txt for reading");
+            exit(1);
+        }
+
+        // Read the content of the file and write it to the second pipe
+        int fd2 = open("fifo2", O_WRONLY);
+        if (fd2 == -1) {
+            perror("Failed to open fifo2 for writing");
+            exit(1);
+        }
+
+        while (read(output_fd, result, sizeof(result)) > 0) {
+            write(fd2, result, strlen(result));
+        }
+
+        close(output_fd);
+        close(fd2);
+        exit(0); // Exit child process
+    } else { // Parent process (first process)
+        int input_fd, output_fd;
+
+        // Open the output pipe to read from the second process
+        output_fd = open("fifo2", O_RDONLY);
+        if (output_fd == -1) {
+            perror("Failed to open fifo2 for reading");
+            exit(1);
+        }
+
+        // Accept the sentence from the user
+        printf("Enter a sentence: ");
+        fgets(sentence, sizeof(sentence), stdin);
+
+        // Open the first pipe to write the sentence
+        input_fd = open("fifo1", O_WRONLY);
+        if (input_fd == -1) {
+            perror("Failed to open fifo1 for writing");
+            exit(1);
+        }
+
+        // Write the sentence to the first pipe
+        write(input_fd, sentence, strlen(sentence));
+        close(input_fd);
+
+        // Read the result from the second pipe
+        printf("\nResults from the second process:\n");
+        while (read(output_fd, result, sizeof(result)) > 0) {
+            printf("%s", result);
+        }
+
+        close(output_fd);
+    }
+
+    // Clean up: Remove FIFO files
+    unlink("fifo1");
+    unlink("fifo2");
+
+    return 0;
+}
