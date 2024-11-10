@@ -1,0 +1,78 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+// Function to sort the array of requests
+void sort(int arr[], int n) {
+    int temp;
+    for (int i = 0; i < n-1; i++) {
+        for (int j = i+1; j < n; j++) {
+            if (arr[i] > arr[j]) {
+                temp = arr[i];
+                arr[i] = arr[j];
+                arr[j] = temp;
+            }
+        }
+    }
+}
+
+// Function to implement C-Look Disk Scheduling algorithm
+void clook(int arr[], int size, int head, int disk_size) {
+    int distance = 0, cur_track;
+    int left[size], right[size];
+    int left_count = 0, right_count = 0;
+
+    // Dividing the requests into left and right of the head
+    for (int i = 0; i < size; i++) {
+        if (arr[i] < head) {
+            left[left_count++] = arr[i];
+        } else {
+            right[right_count++] = arr[i];
+        }
+    }
+
+    // Sorting the left and right request arrays
+    sort(left, left_count);
+    sort(right, right_count);
+
+    // Move towards the right and service requests
+    for (int i = 0; i < right_count; i++) {
+        cur_track = right[i];
+        distance += abs(cur_track - head);
+        head = cur_track;
+    }
+
+    // After reaching the rightmost request, jump to the farthest left request
+    if (left_count > 0) {
+        head = left[0]; // Head jumps to the first request in the left array
+        distance += abs(head - right[right_count - 1]); // Jump distance
+    }
+
+    // Serve the remaining left requests
+    for (int i = 0; i < left_count; i++) {
+        cur_track = left[i];
+        distance += abs(cur_track - head);
+        head = cur_track;
+    }
+
+    printf("Total distance traveled by the disk: %d\n", distance);
+}
+
+// Main function to demonstrate C-Look Disk Scheduling
+int main() {
+    int arr[] = {98, 183, 37, 122, 14, 124, 65, 67};
+    int size = sizeof(arr) / sizeof(arr[0]);
+    int head = 50;  // Initial head position
+    int disk_size = 200;  // Total number of tracks in the disk
+
+    printf("Initial disk head position: %d\n", head);
+    printf("Disk requests: ");
+    for (int i = 0; i < size; i++) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+
+    // Perform C-Look Disk Scheduling
+    clook(arr, size, head, disk_size);
+
+    return 0;
+}
