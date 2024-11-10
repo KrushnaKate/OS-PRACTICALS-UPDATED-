@@ -1,0 +1,83 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+void asc(int arr[],int n){
+
+
+  for(int i=0;i<n-1;i++){
+    for(int j = 0;j<n-i-1;j++){
+      if(arr[j]>arr[j+1]){
+        int temp = arr[j];
+        arr[j] = arr[j+1];
+        arr[j+1] = temp;
+      }
+    }
+  }
+}
+void desc(int arr[],int n){
+
+
+  for(int i=0;i<n-1;i++){
+    for(int j = 0;j<n-i-1;j++){
+      if(arr[j]<arr[j+1]){
+        int temp = arr[j];
+        arr[j] = arr[j+1];
+        arr[j+1] = temp;
+      }
+    }
+  }
+}
+
+void printArr(int arr[],int n){
+  for(int i = 0;i<n;i++){
+    printf("%d",arr[i]);
+  }
+  printf("\n");
+
+}
+
+int main(){
+  int n,i;
+  printf("enter array size");
+  scanf("%d", &n);
+  
+  int arr[n];
+  for(int i = 0;i<n;i++){
+    scanf("%d",&arr[i]);
+  }
+  
+  int pid = fork();
+  
+  if(pid<0){
+    printf("fork failed");
+    exit(1);
+  }
+  
+  else if(pid==0){
+    //child process
+    //sleep(5);
+    printf("child process (PID:%d) \n",getpid());
+    printf("parent process (PID:%d) \n",getppid());
+    asc(arr,n);
+    printArr(arr,n);
+    //system("ps -el | grep init");
+    }
+  else{
+   
+    system("ps -el | grep Z");
+    i=wait(0);
+    printf("terminated child (PID:%d) \n",i);
+    printf("parent (PID:%d) \n",getpid());
+    printf("parents parent(PID:%d) \n",getppid());
+    desc(arr,n);
+    printArr(arr,n);
+
+    
+  }
+    
+  return 0;
+
+}
