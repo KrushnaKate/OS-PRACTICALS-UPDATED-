@@ -34,6 +34,7 @@ void desc(int arr[],int n){
 void printArr(int arr[],int n){
   for(int i = 0;i<n;i++){
     printf("%d",arr[i]);
+  printf(" ");
   }
   printf("\n");
 
@@ -57,27 +58,36 @@ int main(){
   }
   
   else if(pid==0){
-    //child process
+    //uncomment this for orphan demo
     //sleep(5);
     printf("child process (PID:%d) \n",getpid());
-    printf("parent process (PID:%d) \n",getppid());
+    printf("parent (PID:%d) \n",getppid());
+    printf("sorted by child \n");
     asc(arr,n);
     printArr(arr,n);
-    //system("ps -el | grep init");
+   
     }
   else{
-   
-    system("ps -el | grep Z");
-    i=wait(0);
+    //uncomment this for zombie demo
+    //system("ps -el | grep Z");
+    //i=wait(0);
+
+
     printf("terminated child (PID:%d) \n",i);
     printf("parent (PID:%d) \n",getpid());
-    printf("parents parent(PID:%d) \n",getppid());
+    printf("sorted by parent \n");
     desc(arr,n);
     printArr(arr,n);
+
+    //uncomment this for orphan demo
+    //exit(0);
 
     
   }
     
   return 0;
 
+
 }
+
+
