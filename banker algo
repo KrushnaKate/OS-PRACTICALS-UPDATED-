@@ -1,0 +1,98 @@
+#include <stdio.h>
+#include <stdbool.h>
+
+#define P 5  // Number of processes
+#define R 3  // Number of resources
+
+// Function to check if a process can be completed
+bool isSafe(int avail[], int max[][R], int allot[][R]) {
+    int need[P][R];
+    bool finish[P] = {false};
+    int safeSeq[P];
+    int work[R];
+    int count = 0;
+
+    // Calculate the Need matrix
+    for (int i = 0; i < P; i++) {
+        for (int j = 0; j < R; j++) {
+            need[i][j] = max[i][j] - allot[i][j];
+        }
+    }
+
+    // Initialize work vector
+    for (int i = 0; i < R; i++) {
+        work[i] = avail[i];
+    }
+
+    // Find a safe sequence
+    while (count < P) {
+        bool found = false;
+
+        for (int p = 0; p < P; p++) {
+            if (!finish[p]) {
+                // Check if the process can proceed
+                bool canProceed = true;
+                for (int i = 0; i < R; i++) {
+                    if (need[p][i] > work[i]) {
+                        canProceed = false;
+                        break;
+                    }
+                }
+
+                // If the process can proceed, allocate resources and mark it finished
+                if (canProceed) {
+                    for (int i = 0; i < R; i++) {
+                        work[i] += allot[p][i];
+                    }
+                    safeSeq[count++] = p;
+                    finish[p] = true;
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        // If no process can proceed, system is in deadlock
+        if (!found) {
+            printf("System is in a Deadlock state.\n");
+            return false;
+        }
+    }
+
+    // If safe sequence exists, print it
+    printf("System is in a Safe state.\nSafe Sequence: ");
+    for (int i = 0; i < P; i++) {
+        printf("P%d ", safeSeq[i]);
+    }
+    printf("\n");
+    return true;
+}
+
+// Main function to simulate Banker's Algorithm
+int main() {
+    // Available resources
+    int avail[] = {3, 3, 2};  // Available resources for each type
+
+    // Maximum demand of resources by each process
+    int max[][R] = {
+        {7, 5, 3},  // Process 0
+        {3, 2, 2},  // Process 1
+        {9, 0, 2},  // Process 2
+        {2, 2, 2},  // Process 3
+        {4, 3, 3}   // Process 4
+    };
+
+    // Resources allocated to each process
+    int allot[][R] = {
+        {0, 1, 0},  // Process 0
+        {2, 0, 0},  // Process 1
+        {3, 0, 2},  // Process 2
+        {2, 1, 1},  // Process 3
+        {0, 0, 2}   // Process 4
+    };
+
+    // Check if the system is in a safe state
+    isSafe(avail, max, allot);
+
+    return 0;
+}
