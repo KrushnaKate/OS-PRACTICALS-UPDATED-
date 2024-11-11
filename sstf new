@@ -1,0 +1,60 @@
+#include <stdio.h>
+#include <stdlib.h>
+#define MAX 100
+
+// Function to find the closest request
+int findClosestRequest(int head, int requests[], int processed[], int numRequests) {
+    int minDistance = __INT_MAX__;
+    int closestRequest = -1;
+
+    for (int i = 0; i < numRequests; i++) {
+        if (!processed[i]) { // If request is not processed
+            int distance = abs(head - requests[i]);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestRequest = i;
+            }
+        }
+    }
+    return closestRequest;
+}
+
+// Function to calculate total head movement using SSTF disk scheduling
+int sstfDiskScheduling(int requests[], int numRequests, int head) {
+    int totalHeadMovement = 0;
+    int processed[MAX] = {0}; // Array to track if a request has been processed
+
+    for (int i = 0; i < numRequests; i++) {
+        // Find the closest unprocessed request
+        int closestRequestIndex = findClosestRequest(head, requests, processed, numRequests);
+        
+        if (closestRequestIndex == -1) break; // All requests processed
+
+        // Calculate movement for the closest request
+        totalHeadMovement += abs(head - requests[closestRequestIndex]);
+        head = requests[closestRequestIndex];
+        
+        // Mark the request as processed
+        processed[closestRequestIndex] = 1;
+    }
+
+    return totalHeadMovement;
+}
+
+int main() {
+    int numRequests = 7;
+    int requests[] = {82, 170, 43, 140, 24, 16, 190};
+    int head = 50;
+
+    printf("Initial head position: %d\n", head);
+    printf("Requests: ");
+    for (int i = 0; i < numRequests; i++) {
+        printf("%d ", requests[i]);
+    }
+    printf("\n");
+
+    int totalHeadMovement = sstfDiskScheduling(requests, numRequests, head);
+    printf("Total head movement: %d\n", totalHeadMovement);
+
+    return 0;
+}
