@@ -1,0 +1,68 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+
+using namespace std;
+
+// Function to calculate total head movement using SCAN disk scheduling
+int scanDiskScheduling(vector<int> requests, int head, int diskSize, bool direction) {
+    int totalHeadMovement = 0;
+    vector<int> left, right;
+
+    // Divide requests into left and right based on the head position
+    for (int request : requests) {
+        if (request < head) left.push_back(request);
+        else right.push_back(request);
+    }
+
+    // Add boundaries (start or end of disk)
+    if (direction) right.push_back(diskSize - 1); // Moving towards the end
+    else left.push_back(0); // Moving towards the start
+
+    // Sort the left and right requests
+    sort(left.begin(), left.end());
+    sort(right.begin(), right.end());
+
+    // SCAN algorithm logic: service requests in the chosen direction
+    if (direction) {  // Moving towards the end of disk
+        for (int i = 0; i < right.size(); i++) {
+            totalHeadMovement += abs(head - right[i]);
+            head = right[i];
+        }
+        // Reverse direction: move back to handle left side requests
+        for (int i = left.size() - 1; i >= 0; i--) {
+            totalHeadMovement += abs(head - left[i]);
+            head = left[i];
+        }
+    } else {  // Moving towards the start of disk
+        for (int i = left.size() - 1; i >= 0; i--) {
+            totalHeadMovement += abs(head - left[i]);
+            head = left[i];
+        }
+        // Reverse direction: move back to handle right side requests
+        for (int i = 0; i < right.size(); i++) {
+            totalHeadMovement += abs(head - right[i]);
+            head = right[i];
+        }
+    }
+
+    return totalHeadMovement;
+}
+
+int main() {
+    // Specific example values
+    int numRequests = 7;
+    vector<int> requests = {82, 170, 43, 140, 24, 16, 190};
+    int initialHead = 50;
+    int diskSize = 200;
+    bool direction = true; // Moving towards higher tracks
+
+    int totalHeadMovement = scanDiskScheduling(requests, initialHead, diskSize, direction);
+    cout<< "REQUEST:82, 170, 43, 140, 24, 16, 190"<< endl;
+    cout<< "Head = 50"<< endl;
+     cout<< "diskSize = 200"<< endl;
+    cout << "Total head movement: " << totalHeadMovement << endl;
+
+    return 0;
+}
