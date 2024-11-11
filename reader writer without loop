@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+
+sem_t mutex, write_lock;
+int read_count = 0;
+
+void *reader(void *arg) {
+    int reader_id = *((int *)arg);
+
+    // Entry section for reader
+    sem_wait(&mutex);      // Lock mutex to update read_count safely
+    read_count++;
+    if (read_count == 1)   // If it's the first reader, lock write_lock
+        sem_wait(&write_lock);
+    sem_post(&mutex);      // Release mutex
+
+    // Critical section (reading)
+    printf("Reader %d is reading.\n", reader_id);
+
+    // Exit section for reader
+    sem_wait(&mutex);
+    read_count--;
+    if (read_count == 0)   // If no more readers, release write_lock for writers
+        sem_post(&write_lock);
+    sem_post(&mutex);
+
+    return NULL;
+}
+
+void *writer(void *arg) {
+    int writer_id = *((int *)arg);
+
+    // Entry section for writer
+    sem_wait(&write_lock);  // Lock write_lock to get exclusive access
+
+    // Critical section (writing)
+    printf("Writer %d is writing.\n", writer_id);
+
+    // Exit section for writer
+    sem_post(&write_lock);  // Release write_lock
+
+    return NULL;
+}
+
+int main() {
+    pthread_t readers[5], writers[5];
+    int reader_ids[5] = {1, 2, 3, 4, 5};
+    int writer_ids[5] = {1, 2, 3, 4, 5};
+
+    // Initialize semaphores
+    sem_init(&mutex, 0, 1);
+    sem_init(&write_lock, 0, 1);
+
+    // Create reader and writer threads
+    for (int i = 0; i < 5; i++) {
+        pthread_create(&readers[i], NULL, reader, &reader_ids[i]);
+        pthread_create(&writers[i], NULL, writer, &writer_ids[i]);
+    }
+
+    // Wait for all threads to finish
+    for (int i = 0; i < 5; i++) {
+        pthread_join(readers[i], NULL);
+        pthread_join(writers[i], NULL);
+    }
+
+    // Destroy semaphores
+    sem_destroy(&mutex);
+    sem_destroy(&write_lock);
+
+    return 0;
+}
